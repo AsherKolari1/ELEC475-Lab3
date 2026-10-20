@@ -1,0 +1,25 @@
+{
+  "session": "lab3",
+  "remote_root": "/content/elec475-lab3",
+  "requirements": "requirements.txt",
+  "local_dataset": "data",
+  "drive_dataset_archive": "/content/drive/MyDrive/ELEC475-Lab3/dataset.tar.gz",
+  "num_workers": 0,
+  "batch_size": 4,
+  "require_dataset_before_run": true,
+  "execution_backend": "auto",
+  "experiment_command": [
+    "python",
+    "-m",
+    "models.snoutnet"
+  ],
+  "remote_requirements": "requirements-colab.txt",
+  "dataset_root": "data/oxford-iiit-pet-noses",
+  "output_root": "runs",
+  "smoke_budget_seconds": 180,
+  "remote_timeout_seconds": 600,
+  "auto_policy": {
+    "long_job_minutes": 15,
+    "local_vram_fraction": 0.8
+  }
+}

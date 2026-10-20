@@ -17,10 +17,17 @@ def main():
     torch.set_num_threads(1)
     preview = None
     for split in ("train", "test"):
-        dataset = PetNoseDataset(split=split)
+        dataset = PetNoseDataset(
+            root=os.getenv("ELEC475_DATASET_ROOT", "data/oxford-iiit-pet-noses"),
+            split=split,
+        )
+        workers = int(os.getenv("ELEC475_NUM_WORKERS", "0"))
         loader = DataLoader(
-            dataset, batch_size=64, shuffle=False,
-            num_workers=min(4, os.cpu_count() or 1),
+            dataset, batch_size=int(os.getenv("ELEC475_BATCH_SIZE", "64")), shuffle=False,
+            num_workers=workers,
+            pin_memory=os.getenv("ELEC475_PIN_MEMORY", "0") == "1",
+            persistent_workers=workers > 0 and os.getenv("ELEC475_PERSISTENT_WORKERS", "0") == "1",
+            prefetch_factor=2 if workers > 0 else None,
         )
         count = 0
         for images, labels, _ in loader:
@@ -48,7 +55,7 @@ def main():
         ax.set_title(f"Training sample {index}")
         ax.axis("off")
     fig.tight_layout()
-    output = Path("plots/dataset_check.png")
+    output = Path(os.getenv("ELEC475_OUTPUT_DIR", "plots")) / "dataset_check.png"
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=150)
     plt.close(fig)

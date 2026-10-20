@@ -18,6 +18,20 @@ class SnoutNet(nn.Module):
     """
     SnoutNet Architecture for (3, 227, 227) RGB images.
 
+    Max-pooling output size derivation (apply separately to height and width):
+        With no padding and dilation=1, a full window starting at j * stride
+        must satisfy j * stride + kernel_size <= input_size.
+        Therefore the usual number of windows is
+            floor((input_size - kernel_size) / stride) + 1.
+        ceil_mode=True also includes a final partial window at the right/bottom
+        edge, so for our kernel_size=4, stride=4, padding=0:
+            output_size = ceil((input_size - 4) / 4) + 1
+        Pool 1: ceil(223 / 4) + 1 = ceil(55.75) + 1 = 57
+        Pool 2: ceil(53 / 4) + 1 = ceil(13.25) + 1 = 15
+        Pool 3: ceil(11 / 4) + 1 = ceil(2.75) + 1 = 4
+        For example, 227 = 56 * 4 + 3: 56 full windows plus one partial
+        window covering the last 3 pixels gives 57 outputs.
+
     Spatial dimension arithmetic (pooling with ceil_mode=True rounds UP):
         Input        : (B, 3, 227, 227)
         Conv1 (p=1)  : (B, 64, 227, 227)
@@ -125,6 +139,9 @@ if __name__ == "__main__":
     # ==========================================================================
     from torchinfo import summary
     from utils.dataset import PetNoseDataset
+    import json
+    import os
+    from pathlib import Path
 
     summary(SnoutNet(), input_size=(1, 3, 227, 227))
 
@@ -149,7 +166,9 @@ if __name__ == "__main__":
         del state
 
     model = checks[0][0]
-    dataset = PetNoseDataset(split="test")
+    dataset = PetNoseDataset(
+        root=os.getenv("ELEC475_DATASET_ROOT", "data/oxford-iiit-pet-noses"), split="test"
+    )
     model.eval()
     image, label, orig_size = dataset[0]
     with torch.no_grad():
@@ -157,3 +176,18 @@ if __name__ == "__main__":
     print("Ground truth:", label / 227 * orig_size)
     print("Prediction:  ", pred * orig_size)
     print("Expected:     tensor([350.3443, 181.7347]) (within 1 pixel)")
+    if os.getenv("ELEC475_OUTPUT_DIR"):
+        output_dir = Path(os.environ["ELEC475_OUTPUT_DIR"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        expected = torch.tensor([350.3443, 181.7347])
+        prediction = pred * orig_size
+        metrics = {
+            "ground_truth": (label / 227 * orig_size).tolist(),
+            "prediction": prediction.tolist(),
+            "expected_prediction": expected.tolist(),
+            "within_one_pixel": bool(((prediction - expected).abs() <= 1).all()),
+            "loaded_checkpoints": [name for _, name in checks],
+        }
+        (output_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
+        if not metrics["within_one_pixel"]:
+            raise RuntimeError("Known prediction differs from the pre-lab target by more than one pixel")

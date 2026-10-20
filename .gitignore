@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+data/
+checkpoints/
+runs/
+logs/
+.aws/
+.codex/
+.env*
