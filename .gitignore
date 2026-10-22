@@ -8,3 +8,10 @@ logs/
 .aws/
 .codex/
 .env*
+
+# Generated Python files
+__pycache__/
+*.pyc
+
+# Generated predictions
+predictions/
