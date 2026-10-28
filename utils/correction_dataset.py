@@ -45,7 +45,10 @@ def extract_patch(img: Image.Image, center) -> Image.Image:
     #      (img.crop() fills any part of the region outside the image with black)
     #   2. Resize the region to (INPUT_SIZE, INPUT_SIZE) with Image.BILINEAR
     # ======================================================================
-    pass
+    u, v = center
+    patch = img.crop((u - HALF_PATCH, v - HALF_PATCH,
+                      u + HALF_PATCH, v + HALF_PATCH))
+    return patch.resize((INPUT_SIZE, INPUT_SIZE), Image.BILINEAR)
 
 
 class CorrectionDataset(PetNoseDataset):
@@ -82,7 +85,23 @@ class CorrectionDataset(PetNoseDataset):
         #   5. Return TF.normalize(TF.to_tensor(patch), MEAN, STD) and the
         #      normalized target (du, dv) / HALF_PATCH
         # ======================================================================
-        pass
+        name, u, v = self.samples[idx]
+        with Image.open(self.img_dir / name) as image:
+            image = image.convert("RGB")
+            center = (round(u + random.uniform(-MAX_OFFSET, MAX_OFFSET)),
+                      round(v + random.uniform(-MAX_OFFSET, MAX_OFFSET)))
+            patch = extract_patch(image, center)
+
+        du, dv = u - center[0], v - center[1]
+        if self.augment:
+            if random.random() < 0.5:
+                patch = patch.transpose(Image.FLIP_LEFT_RIGHT)
+                du = -du
+            patch = self.color_jitter(patch)
+
+        patch = TF.normalize(TF.to_tensor(patch), MEAN, STD)
+        target = torch.tensor([du, dv], dtype=torch.float32) / HALF_PATCH
+        return patch, target
 
 
 if __name__ == "__main__":

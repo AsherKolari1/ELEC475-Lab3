@@ -13,6 +13,8 @@ import os
 import time
 import random
 import argparse
+import json
+from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
@@ -113,6 +115,29 @@ def main():
         scheduler.step()
         losses.append(loss)
         print(f"{epoch:^7d} | {loss:^11.5f} | {err:^17.1f} | {time.time() - t0:^8.1f}")
+        # Managed runs retain recovery state after every completed epoch.
+        # The assignment's final model files and training settings are unchanged.
+        if os.getenv("ELEC475_OUTPUT_DIR"):
+            output_dir = Path(os.environ["ELEC475_OUTPUT_DIR"])
+            recovery_dir = output_dir / "checkpoints"
+            recovery_dir.mkdir(parents=True, exist_ok=True)
+            recovery = recovery_dir / (Path(args.save_model).stem + "_resume.pth")
+            temporary = recovery.with_suffix(".tmp")
+            numpy_state = np.random.get_state()
+            torch.save({
+                "epoch": epoch, "model": model.state_dict(),
+                "optimizer": optimizer.state_dict(), "scheduler": scheduler.state_dict(),
+                "losses": losses, "settings": vars(args),
+                "torch_rng": torch.get_rng_state(),
+                "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
+                "python_rng": random.getstate(),
+                "numpy_rng": (numpy_state[0], numpy_state[1].tolist(), *numpy_state[2:]),
+                "loader_rng": loader.generator.get_state(),
+            }, temporary)
+            temporary.replace(recovery)
+            metrics_file = output_dir / (Path(args.save_model).stem + "_metrics.json")
+            metrics_file.write_text(json.dumps({"epoch": epoch, "losses": losses,
+                                               "last_offset_error_px": err}, indent=2))
     print("=" * 52)
     print(f"Training completed in {time.time() - start:.1f}s.")
 

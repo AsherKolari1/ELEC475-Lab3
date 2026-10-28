@@ -107,6 +107,15 @@ not a background service: perform them when handling a user request.
   effective parameters, source/settings, terminal logs, status and metrics in unique
   local `runs/` folders. Honor `ELEC475_NUM_WORKERS`, `ELEC475_BATCH_SIZE`,
   `ELEC475_DATASET_ROOT` and `ELEC475_OUTPUT_DIR` where supported.
+- Append terminal output from Codex-run post-lab Python scripts, tests, debugging,
+  verification and training to `runs/postlab/terminal_output.txt`, including the
+  command, timestamp, stdout/stderr and exit status. Preserve earlier entries and
+  retain any separate managed-run logs. This does not capture commands run in the
+  user's independent terminal; do not claim those are logged unless explicitly
+  captured or supplied by the user. Continue excluding secrets from logs.
+- Also keep timestamped, section-named per-command logs for post-lab work and
+  update `POSTLAB_LOGS.md` with links to logs, verification results and figures.
+  Preserve previous run artifacts when regenerating outputs.
 - Retrieve important remote artifacts automatically, verify checksums and inspect
   logs/checkpoints/metrics before reporting completion or requesting shutdown.
   Recover interrupted retrieval yourself where possible. Never erase unfinished
